@@ -1,0 +1,59 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+</head>
+<body>
+<h1 id="encryption">Encryption</h1>
+<ul>
+<li><a href="#configuration">Configuration</a></li>
+<li><a href="#basic-usage">Basic Usage</a></li>
+</ul>
+<p><a name="configuration"></a> ## Configuration</p>
+<p>Before using Laravel's encrypter, you should set the <code>key</code> option of your <code>config/app.php</code> configuration file to a 32 character, random string. If this value is not properly set, all values encrypted by Laravel will be insecure.</p>
+<p><a name="basic-usage"></a> ## Basic Usage</p>
+<h4 id="encrypting-a-value">Encrypting A Value</h4>
+<p>You may encrypt a value using the <code>Crypt</code> <a href="/docs/%7B%7Bversion%7D%7D/facades">facade</a>. All encrypted values are encrypted using OpenSSL and the <code>AES-256-CBC</code> cipher. Furthermore, all encrypted values are signed with a message authentication code (MAC) to detect any modifications to the encrypted string.</p>
+<p>For example, we may use the <code>encrypt</code> method to encrypt a secret and store it on an <a href="/docs/%7B%7Bversion%7D%7D/eloquent">Eloquent model</a>:</p>
+<pre><code>&lt;?php
+
+namespace App\Http\Controllers;
+
+use Crypt;
+use App\User;
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+
+class UserController extends Controller
+{
+    /**
+     * Store a secret message for the user.
+     *
+     * @param  Request  $request
+     * @param  int  $id
+     * @return Response
+     */
+    public function storeSecret(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        $user-&gt;fill([
+            &#39;secret&#39; =&gt; Crypt::encrypt($request-&gt;secret)
+        ])-&gt;save();
+    }
+}</code></pre>
+<h4 id="decrypting-a-value">Decrypting A Value</h4>
+<p>Of course, you may decrypt values using the <code>decrypt</code> method on the <code>Crypt</code> facade. If the value can not be properly decrypted, such as when the MAC is invalid, an <code>Illuminate\Contracts\Encryption\DecryptException</code> will be thrown:</p>
+<pre><code>use Illuminate\Contracts\Encryption\DecryptException;
+
+try {
+    $decrypted = Crypt::decrypt($encryptedValue);
+} catch (DecryptException $e) {
+    //
+}</code></pre>
+</body>
+</html>

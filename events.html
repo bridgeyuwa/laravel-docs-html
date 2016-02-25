@@ -1,0 +1,406 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+</head>
+<body>
+<h1 id="events">Events</h1>
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#registering-events-and-listeners">Registering Events / Listeners</a></li>
+<li><a href="#defining-events">Defining Events</a></li>
+<li><a href="#defining-listeners">Defining Listeners</a>
+<ul>
+<li><a href="#queued-event-listeners">Queued Event Listeners</a></li>
+</ul></li>
+<li><a href="#firing-events">Firing Events</a></li>
+<li><a href="#broadcasting-events">Broadcasting Events</a>
+<ul>
+<li><a href="#broadcast-configuration">Configuration</a></li>
+<li><a href="#marking-events-for-broadcast">Marking Events For Broadcast</a></li>
+<li><a href="#broadcast-data">Broadcast Data</a></li>
+<li><a href="#event-broadcasting-customizations">Event Broadcasting Customizations</a></li>
+<li><a href="#consuming-event-broadcasts">Consuming Event Broadcasts</a></li>
+</ul></li>
+<li><a href="#event-subscribers">Event Subscribers</a></li>
+</ul>
+<p><a name="introduction"></a> ## Introduction</p>
+<p>Laravel's events provides a simple observer implementation, allowing you to subscribe and listen for events in your application. Event classes are typically stored in the <code>app/Events</code> directory, while their listeners are stored in <code>app/Listeners</code>.</p>
+<p><a name="registering-events-and-listeners"></a> ## Registering Events / Listeners</p>
+<p>The <code>EventServiceProvider</code> included with your Laravel application provides a convenient place to register all event listeners. The <code>listen</code> property contains an array of all events (keys) and their listeners (values). Of course, you may add as many events to this array as your application requires. For example, let's add our <code>PodcastWasPurchased</code> event:</p>
+<pre><code>/**
+ * The event listener mappings for the application.
+ *
+ * @var array
+ */
+protected $listen = [
+    &#39;App\Events\PodcastWasPurchased&#39; =&gt; [
+        &#39;App\Listeners\EmailPurchaseConfirmation&#39;,
+    ],
+];</code></pre>
+<h3 id="generating-event-listener-classes">Generating Event / Listener Classes</h3>
+<p>Of course, manually creating the files for each event and listener is cumbersome. Instead, simply add listeners and events to your <code>EventServiceProvider</code> and use the <code>event:generate</code> command. This command will generate any events or listeners that are listed in your <code>EventServiceProvider</code>. Of course, events and listeners that already exist will be left untouched:</p>
+<pre><code>php artisan event:generate</code></pre>
+<h3 id="registering-events-manually">Registering Events Manually</h3>
+<p>Typically, events should be registered via the <code>EventServiceProvider</code> <code>$listen</code> array; however, you may also register events manually with the event dispatcher using either the <code>Event</code> facade or the <code>Illuminate\Contracts\Events\Dispatcher</code> contract implementation:</p>
+<pre><code>/**
+ * Register any other events for your application.
+ *
+ * @param  \Illuminate\Contracts\Events\Dispatcher  $events
+ * @return void
+ */
+public function boot(DispatcherContract $events)
+{
+    parent::boot($events);
+
+    $events-&gt;listen(&#39;event.name&#39;, function ($foo, $bar) {
+        //
+    });
+}</code></pre>
+<h4 id="wildcard-event-listeners">Wildcard Event Listeners</h4>
+<p>You may even register listeners using the <code>*</code> as a wildcard, allowing you to catch multiple events on the same listener. Wildcard listeners receive the entire event data array as a single argument:</p>
+<pre><code>$events-&gt;listen(&#39;event.*&#39;, function (array $data) {
+    //
+});</code></pre>
+<p><a name="defining-events"></a> ## Defining Events</p>
+<p>An event class is simply a data container which holds the information related to the event. For example, let's assume our generated <code>PodcastWasPurchased</code> event receives an <a href="/docs/%7B%7Bversion%7D%7D/eloquent">Eloquent ORM</a> object:</p>
+<pre><code>&lt;?php
+
+namespace App\Events;
+
+use App\Podcast;
+use App\Events\Event;
+use Illuminate\Queue\SerializesModels;
+
+class PodcastWasPurchased extends Event
+{
+    use SerializesModels;
+
+    public $podcast;
+
+    /**
+     * Create a new event instance.
+     *
+     * @param  Podcast  $podcast
+     * @return void
+     */
+    public function __construct(Podcast $podcast)
+    {
+        $this-&gt;podcast = $podcast;
+    }
+}</code></pre>
+<p>As you can see, this event class contains no logic. It is simply a container for the <code>Podcast</code> object that was purchased. The <code>SerializesModels</code> trait used by the event will gracefully serialize any Eloquent models if the event object is serialized using PHP's <code>serialize</code> function.</p>
+<p><a name="defining-listeners"></a> ## Defining Listeners</p>
+<p>Next, let's take a look at the listener for our example event. Event listeners receive the event instance in their <code>handle</code> method. The <code>event:generate</code> command will automatically import the proper event class and type-hint the event on the <code>handle</code> method. Within the <code>handle</code> method, you may perform any logic necessary to respond to the event.</p>
+<pre><code>&lt;?php
+
+namespace App\Listeners;
+
+use App\Events\PodcastWasPurchased;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Contracts\Queue\ShouldQueue;
+
+class EmailPurchaseConfirmation
+{
+    /**
+     * Create the event listener.
+     *
+     * @return void
+     */
+    public function __construct()
+    {
+        //
+    }
+
+    /**
+     * Handle the event.
+     *
+     * @param  PodcastWasPurchased  $event
+     * @return void
+     */
+    public function handle(PodcastWasPurchased $event)
+    {
+        // Access the podcast using $event-&gt;podcast...
+    }
+}</code></pre>
+<p>Your event listeners may also type-hint any dependencies they need on their constructors. All event listeners are resolved via the Laravel <a href="/docs/%7B%7Bversion%7D%7D/container">service container</a>, so dependencies will be injected automatically:</p>
+<pre><code>use Illuminate\Contracts\Mail\Mailer;
+
+public function __construct(Mailer $mailer)
+{
+    $this-&gt;mailer = $mailer;
+}</code></pre>
+<h4 id="stopping-the-propagation-of-an-event">Stopping The Propagation Of An Event</h4>
+<p>Sometimes, you may wish to stop the propagation of an event to other listeners. You may do so by returning <code>false</code> from your listener's <code>handle</code> method.</p>
+<p><a name="queued-event-listeners"></a> ### Queued Event Listeners</p>
+<p>Need to <a href="/docs/%7B%7Bversion%7D%7D/queues">queue</a> an event listener? It couldn't be any easier. Simply add the <code>ShouldQueue</code> interface to the listener class. Listeners generated by the <code>event:generate</code> Artisan command already have this interface imported into the current namespace, so you can use it immediately:</p>
+<pre><code>&lt;?php
+
+namespace App\Listeners;
+
+use App\Events\PodcastWasPurchased;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Contracts\Queue\ShouldQueue;
+
+class EmailPurchaseConfirmation implements ShouldQueue
+{
+    //
+}</code></pre>
+<p>That's it! Now, when this listener is called for an event, it will be queued automatically by the event dispatcher using Laravel's <a href="/docs/%7B%7Bversion%7D%7D/queues">queue system</a>. If no exceptions are thrown when the listener is executed by the queue, the queued job will automatically be deleted after it has processed.</p>
+<h4 id="manually-accessing-the-queue">Manually Accessing The Queue</h4>
+<p>If you need to access the underlying queue job's <code>delete</code> and <code>release</code> methods manually, you may do so. The <code>Illuminate\Queue\InteractsWithQueue</code> trait, which is imported by default on generated listeners, gives you access to these methods:</p>
+<pre><code>&lt;?php
+
+namespace App\Listeners;
+
+use App\Events\PodcastWasPurchased;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Contracts\Queue\ShouldQueue;
+
+class EmailPurchaseConfirmation implements ShouldQueue
+{
+    use InteractsWithQueue;
+
+    public function handle(PodcastWasPurchased $event)
+    {
+        if (true) {
+            $this-&gt;release(30);
+        }
+    }
+}</code></pre>
+<p><a name="firing-events"></a> ## Firing Events</p>
+<p>To fire an event, you may use the <code>Event</code> <a href="/docs/%7B%7Bversion%7D%7D/facades">facade</a>, passing an instance of the event to the <code>fire</code> method. The <code>fire</code> method will dispatch the event to all of its registered listeners:</p>
+<pre><code>&lt;?php
+
+namespace App\Http\Controllers;
+
+use Event;
+use App\Podcast;
+use App\Events\PodcastWasPurchased;
+use App\Http\Controllers\Controller;
+
+class UserController extends Controller
+{
+    /**
+     * Show the profile for the given user.
+     *
+     * @param  int  $userId
+     * @param  int  $podcastId
+     * @return Response
+     */
+    public function purchasePodcast($userId, $podcastId)
+    {
+        $podcast = Podcast::findOrFail($podcastId);
+
+        // Purchase podcast logic...
+
+        Event::fire(new PodcastWasPurchased($podcast));
+    }
+}</code></pre>
+<p>Alternatively, you may use the global <code>event</code> helper function to fire events:</p>
+<pre><code>event(new PodcastWasPurchased($podcast));</code></pre>
+<p><a name="broadcasting-events"></a> ## Broadcasting Events</p>
+<p>In many modern web applications, web sockets are used to implement real-time, live-updating user interfaces. When some data is updated on the server, a message is typically sent over a websocket connection to be handled by the client.</p>
+<p>To assist you in building these types of applications, Laravel makes it easy to &quot;broadcast&quot; your events over a websocket connection. Broadcasting your Laravel events allows you to share the same event names between your server-side code and your client-side JavaScript framework.</p>
+<p><a name="broadcast-configuration"></a> ### Configuration</p>
+<p>All of the event broadcasting configuration options are stored in the <code>config/broadcasting.php</code> configuration file. Laravel supports several broadcast drivers out of the box: <a href="https://pusher.com">Pusher</a>, <a href="/docs/%7B%7Bversion%7D%7D/redis">Redis</a>, and a <code>log</code> driver for local development and debugging. A configuration example is included for each of these drivers.</p>
+<h4 id="broadcast-prerequisites">Broadcast Prerequisites</h4>
+<p>The following dependencies are needed for event broadcasting:</p>
+<ul>
+<li>Pusher: <code>pusher/pusher-php-server ~2.0</code></li>
+<li>Redis: <code>predis/predis ~1.0</code></li>
+</ul>
+<h4 id="queue-prerequisites">Queue Prerequisites</h4>
+<p>Before broadcasting events, you will also need to configure and run a <a href="/docs/%7B%7Bversion%7D%7D/queues">queue listener</a>. All event broadcasting is done via queued jobs so that the response time of your application is not seriously affected.</p>
+<p><a name="marking-events-for-broadcast"></a> ### Marking Events For Broadcast</p>
+<p>To inform Laravel that a given event should be broadcast, implement the <code>Illuminate\Contracts\Broadcasting\ShouldBroadcast</code> interface on the event class. The <code>ShouldBroadcast</code> interface requires you to implement a single method: <code>broadcastOn</code>. The <code>broadcastOn</code> method should return an array of &quot;channel&quot; names that the event should be broadcast on:</p>
+<pre><code>&lt;?php
+
+namespace App\Events;
+
+use App\User;
+use App\Events\Event;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+
+class ServerCreated extends Event implements ShouldBroadcast
+{
+    use SerializesModels;
+
+    public $user;
+
+    /**
+     * Create a new event instance.
+     *
+     * @return void
+     */
+    public function __construct(User $user)
+    {
+        $this-&gt;user = $user;
+    }
+
+    /**
+     * Get the channels the event should be broadcast on.
+     *
+     * @return array
+     */
+    public function broadcastOn()
+    {
+        return [&#39;user.&#39;.$this-&gt;user-&gt;id];
+    }
+}</code></pre>
+<p>Then, you only need to <a href="#firing-events">fire the event</a> as you normally would. Once the event has been fired, a <a href="/docs/%7B%7Bversion%7D%7D/queues">queued job</a> will automatically broadcast the event over your specified broadcast driver.</p>
+<p><a name="broadcast-data"></a> ### Broadcast Data</p>
+<p>When an event is broadcast, all of its <code>public</code> properties are automatically serialized and broadcast as the event's payload, allowing you to access any of its public data from your JavaScript application. So, for example, if your event has a single public <code>$user</code> property that contains an Eloquent model, the broadcast payload would be:</p>
+<pre><code>{
+    &quot;user&quot;: {
+        &quot;id&quot;: 1,
+        &quot;name&quot;: &quot;Jonathan Banks&quot;
+        ...
+    }
+}</code></pre>
+<p>However, if you wish to have even more fine-grained control over your broadcast payload, you may add a <code>broadcastWith</code> method to your event. This method should return the array of data that you wish to broadcast with the event:</p>
+<pre><code>/**
+ * Get the data to broadcast.
+ *
+ * @return array
+ */
+public function broadcastWith()
+{
+    return [&#39;user&#39; =&gt; $this-&gt;user-&gt;id];
+}</code></pre>
+<p><a name="event-broadcasting-customizations"></a> ### Event Broadcasting Customizations</p>
+<h4 id="customizing-the-event-name">Customizing The Event Name</h4>
+<p>By default, the broadcast event name will be the fully qualified class name of the event. So, if the event's class name is <code>App\Events\ServerCreated</code>, the broadcast event would be <code>App\Events\ServerCreated</code>. You can customize this broadcast event name using by defining a <code>broadcastAs</code> method on your event class:</p>
+<pre><code>/**
+ * Get the broadcast event name.
+ *
+ * @return string
+ */
+public function broadcastAs()
+{
+    return &#39;app.server-created&#39;;
+}</code></pre>
+<h4 id="customizing-the-queue">Customizing The Queue</h4>
+<p>By default, each event to be broadcast is placed on the default queue for the default queue connection in your <code>queue.php</code> configuration file. You may customize the queue used by the event broadcaster by adding an <code>onQueue</code> method to your event class. This method should return the name of the queue you wish to use:</p>
+<pre><code> /**
+ * Set the name of the queue the event should be placed on.
+ *
+ * @return string
+ */
+public function onQueue()
+{
+    return &#39;your-queue-name&#39;;
+}</code></pre>
+<p><a name="consuming-event-broadcasts"></a> ### Consuming Event Broadcasts</p>
+<h4 id="pusher">Pusher</h4>
+<p>You may conveniently consume events broadcast using the <a href="https://pusher.com">Pusher</a> driver using Pusher's JavaScript SDK. For example, let's consume the <code>App\Events\ServerCreated</code> event from our previous examples:</p>
+<pre><code>this.pusher = new Pusher(&#39;pusher-key&#39;);
+
+this.pusherChannel = this.pusher.subscribe(&#39;user.&#39; + USER_ID);
+
+this.pusherChannel.bind(&#39;App\\Events\\ServerCreated&#39;, function(message) {
+    console.log(message.user);
+});</code></pre>
+<h4 id="redis">Redis</h4>
+<p>If you are using the Redis broadcaster, you will need to write your own Redis pub/sub consumer to receive the messages and broadcast them using the websocket technology of your choice. For example, you may choose to use the popular <a href="http://socket.io">Socket.io</a> library which is written in Node.</p>
+<p>Using the <code>socket.io</code> and <code>ioredis</code> Node libraries, you can quickly write an event broadcaster to publish all events that are broadcast by your Laravel application:</p>
+<pre><code>var app = require(&#39;http&#39;).createServer(handler);
+var io = require(&#39;socket.io&#39;)(app);
+
+var Redis = require(&#39;ioredis&#39;);
+var redis = new Redis();
+
+app.listen(6001, function() {
+    console.log(&#39;Server is running!&#39;);
+});
+
+function handler(req, res) {
+    res.writeHead(200);
+    res.end(&#39;&#39;);
+}
+
+io.on(&#39;connection&#39;, function(socket) {
+    //
+});
+
+redis.psubscribe(&#39;*&#39;, function(err, count) {
+    //
+});
+
+redis.on(&#39;pmessage&#39;, function(subscribed, channel, message) {
+    message = JSON.parse(message);
+    io.emit(channel + &#39;:&#39; + message.event, message.data);
+});</code></pre>
+<p><a name="event-subscribers"></a> ## Event Subscribers</p>
+<p>Event subscribers are classes that may subscribe to multiple events from within the class itself, allowing you to define several event handlers within a single class. Subscribers should define a <code>subscribe</code> method, which will be passed an event dispatcher instance:</p>
+<pre><code>&lt;?php
+
+namespace App\Listeners;
+
+class UserEventListener
+{
+    /**
+     * Handle user login events.
+     */
+    public function onUserLogin($event) {}
+
+    /**
+     * Handle user logout events.
+     */
+    public function onUserLogout($event) {}
+
+    /**
+     * Register the listeners for the subscriber.
+     *
+     * @param  Illuminate\Events\Dispatcher  $events
+     */
+    public function subscribe($events)
+    {
+        $events-&gt;listen(
+            &#39;App\Events\UserLoggedIn&#39;,
+            &#39;App\Listeners\UserEventListener@onUserLogin&#39;
+        );
+
+        $events-&gt;listen(
+            &#39;App\Events\UserLoggedOut&#39;,
+            &#39;App\Listeners\UserEventListener@onUserLogout&#39;
+        );
+    }
+
+}</code></pre>
+<h4 id="registering-an-event-subscriber">Registering An Event Subscriber</h4>
+<p>Once the subscriber has been defined, it may be registered with the event dispatcher. You may register subscribers using the <code>$subscribe</code> property on the <code>EventServiceProvider</code>. For example, let's add the <code>UserEventListener</code>.</p>
+<pre><code>&lt;?php
+
+namespace App\Providers;
+
+use Illuminate\Contracts\Events\Dispatcher as DispatcherContract;
+use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
+
+class EventServiceProvider extends ServiceProvider
+{
+    /**
+     * The event listener mappings for the application.
+     *
+     * @var array
+     */
+    protected $listen = [
+        //
+    ];
+
+    /**
+     * The subscriber classes to register.
+     *
+     * @var array
+     */
+    protected $subscribe = [
+        &#39;App\Listeners\UserEventListener&#39;,
+    ];
+}</code></pre>
+</body>
+</html>

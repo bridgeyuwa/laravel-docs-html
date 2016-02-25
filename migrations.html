@@ -1,0 +1,428 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+</head>
+<body>
+<h1 id="database-migrations">Database: Migrations</h1>
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#generating-migrations">Generating Migrations</a></li>
+<li><a href="#migration-structure">Migration Structure</a></li>
+<li><a href="#running-migrations">Running Migrations</a>
+<ul>
+<li><a href="#rolling-back-migrations">Rolling Back Migrations</a></li>
+</ul></li>
+<li><a href="#writing-migrations">Writing Migrations</a>
+<ul>
+<li><a href="#creating-tables">Creating Tables</a></li>
+<li><a href="#renaming-and-dropping-tables">Renaming / Dropping Tables</a></li>
+<li><a href="#creating-columns">Creating Columns</a></li>
+<li><a href="#modifying-columns">Modifying Columns</a></li>
+<li><a href="#dropping-columns">Dropping Columns</a></li>
+<li><a href="#creating-indexes">Creating Indexes</a></li>
+<li><a href="#dropping-indexes">Dropping Indexes</a></li>
+<li><a href="#foreign-key-constraints">Foreign Key Constraints</a></li>
+</ul></li>
+</ul>
+<p><a name="introduction"></a> ## Introduction</p>
+<p>Migrations are like version control for your database, allowing a team to easily modify and share the application's database schema. Migrations are typically paired with Laravel's schema builder to easily build your application's database schema.</p>
+<p>The Laravel <code>Schema</code> <a href="/docs/%7B%7Bversion%7D%7D/facades">facade</a> provides database agnostic support for creating and manipulating tables. It shares the same expressive, fluent API across all of Laravel's supported database systems.</p>
+<p><a name="generating-migrations"></a> ## Generating Migrations</p>
+<p>To create a migration, use the <code>make:migration</code> <a href="/docs/%7B%7Bversion%7D%7D/artisan">Artisan command</a>:</p>
+<pre><code>php artisan make:migration create_users_table</code></pre>
+<p>The new migration will be placed in your <code>database/migrations</code> directory. Each migration file name contains a timestamp which allows Laravel to determine the order of the migrations.</p>
+<p>The <code>--table</code> and <code>--create</code> options may also be used to indicate the name of the table and whether the migration will be creating a new table. These options simply pre-fill the generated migration stub file with the specified table:</p>
+<pre><code>php artisan make:migration add_votes_to_users_table --table=users
+
+php artisan make:migration create_users_table --create=users</code></pre>
+<p>If you would like to specify a custom output path for the generated migration, you may use the <code>--path</code> option when executing the <code>make:migration</code> command. The provided path should be relative to your application's base path.</p>
+<p><a name="migration-structure"></a> ## Migration Structure</p>
+<p>A migration class contains two methods: <code>up</code> and <code>down</code>. The <code>up</code> method is used to add new tables, columns, or indexes to your database, while the <code>down</code> method should simply reverse the operations performed by the <code>up</code> method.</p>
+<p>Within both of these methods you may use the Laravel schema builder to expressively create and modify tables. To learn about all of the methods available on the <code>Schema</code> builder, <a href="#creating-tables">check out its documentation</a>. For example, let's look at a sample migration that creates a <code>flights</code> table:</p>
+<pre><code>&lt;?php
+
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\Migrations\Migration;
+
+class CreateFlightsTable extends Migration
+{
+    /**
+     * Run the migrations.
+     *
+     * @return void
+     */
+    public function up()
+    {
+        Schema::create(&#39;flights&#39;, function (Blueprint $table) {
+            $table-&gt;increments(&#39;id&#39;);
+            $table-&gt;string(&#39;name&#39;);
+            $table-&gt;string(&#39;airline&#39;);
+            $table-&gt;timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     *
+     * @return void
+     */
+    public function down()
+    {
+        Schema::drop(&#39;flights&#39;);
+    }
+}</code></pre>
+<p><a name="running-migrations"></a> ## Running Migrations</p>
+<p>To run all outstanding migrations for your application, use the <code>migrate</code> Artisan command. If you are using the <a href="/docs/%7B%7Bversion%7D%7D/homestead">Homestead virtual machine</a>, you should run this command from within your VM:</p>
+<pre><code>php artisan migrate</code></pre>
+<p>If you receive a &quot;class not found&quot; error when running migrations, try running the <code>composer dump-autoload</code> command and re-issuing the migrate command.</p>
+<h4 id="forcing-migrations-to-run-in-production">Forcing Migrations To Run In Production</h4>
+<p>Some migration operations are destructive, meaning they may cause you to lose data. In order to protect you from running these commands against your production database, you will be prompted for confirmation before these commands are executed. To force the commands to run without a prompt, use the <code>--force</code> flag:</p>
+<pre><code>php artisan migrate --force</code></pre>
+<p><a name="rolling-back-migrations"></a> ### Rolling Back Migrations</p>
+<p>To rollback the latest migration &quot;operation&quot;, you may use the <code>rollback</code> command. Note that this rolls back the last &quot;batch&quot; of migrations that ran, which may include multiple migration files:</p>
+<pre><code>php artisan migrate:rollback</code></pre>
+<p>The <code>migrate:reset</code> command will roll back all of your application's migrations:</p>
+<pre><code>php artisan migrate:reset</code></pre>
+<h4 id="rollback-migrate-in-single-command">Rollback / Migrate In Single Command</h4>
+<p>The <code>migrate:refresh</code> command will first roll back all of your database migrations, and then run the <code>migrate</code> command. This command effectively re-creates your entire database:</p>
+<pre><code>php artisan migrate:refresh
+
+php artisan migrate:refresh --seed</code></pre>
+<p><a name="writing-migrations"></a> ## Writing Migrations</p>
+<p><a name="creating-tables"></a> ### Creating Tables</p>
+<p>To create a new database table, use the <code>create</code> method on the <code>Schema</code> facade. The <code>create</code> method accepts two arguments. The first is the name of the table, while the second is a <code>Closure</code> which receives a <code>Blueprint</code> object used to define the new table:</p>
+<pre><code>Schema::create(&#39;users&#39;, function (Blueprint $table) {
+    $table-&gt;increments(&#39;id&#39;);
+});</code></pre>
+<p>Of course, when creating the table, you may use any of the schema builder's <a href="#creating-columns">column methods</a> to define the table's columns.</p>
+<h4 id="checking-for-table-column-existence">Checking For Table / Column Existence</h4>
+<p>You may easily check for the existence of a table or column using the <code>hasTable</code> and <code>hasColumn</code> methods:</p>
+<pre><code>if (Schema::hasTable(&#39;users&#39;)) {
+    //
+}
+
+if (Schema::hasColumn(&#39;users&#39;, &#39;email&#39;)) {
+    //
+}</code></pre>
+<h4 id="connection-storage-engine">Connection &amp; Storage Engine</h4>
+<p>If you want to perform a schema operation on a database connection that is not your default connection, use the <code>connection</code> method:</p>
+<pre><code>Schema::connection(&#39;foo&#39;)-&gt;create(&#39;users&#39;, function ($table) {
+    $table-&gt;increments(&#39;id&#39;);
+});</code></pre>
+<p>To set the storage engine for a table, set the <code>engine</code> property on the schema builder:</p>
+<pre><code>Schema::create(&#39;users&#39;, function ($table) {
+    $table-&gt;engine = &#39;InnoDB&#39;;
+
+    $table-&gt;increments(&#39;id&#39;);
+});</code></pre>
+<p><a name="renaming-and-dropping-tables"></a> ### Renaming / Dropping Tables</p>
+<p>To rename an existing database table, use the <code>rename</code> method:</p>
+<pre><code>Schema::rename($from, $to);</code></pre>
+<p>To drop an existing table, you may use the <code>drop</code> or <code>dropIfExists</code> methods:</p>
+<pre><code>Schema::drop(&#39;users&#39;);
+
+Schema::dropIfExists(&#39;users&#39;);</code></pre>
+<p><a name="creating-columns"></a> ### Creating Columns</p>
+<p>To update an existing table, we will use the <code>table</code> method on the <code>Schema</code> facade. Like the <code>create</code> method, the <code>table</code> method accepts two arguments: the name of the table and a <code>Closure</code> that receives a <code>Blueprint</code> instance we can use to add columns to the table:</p>
+<pre><code>Schema::table(&#39;users&#39;, function ($table) {
+    $table-&gt;string(&#39;email&#39;);
+});</code></pre>
+<h4 id="available-column-types">Available Column Types</h4>
+<p>Of course, the schema builder contains a variety of column types that you may use when building your tables:</p>
+<table style="width:39%;">
+<colgroup>
+<col width="19%" />
+<col width="19%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">Command</th>
+<th align="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left"><code>$table-&gt;bigIncrements('id');</code></td>
+<td align="left">Incrementing ID (primary key) using a &quot;UNSIGNED BIG INTEGER&quot; equivalent.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>$table-&gt;bigInteger('votes');</code></td>
+<td align="left">BIGINT equivalent for the database.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>$table-&gt;binary('data');</code></td>
+<td align="left">BLOB equivalent for the database.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>$table-&gt;boolean('confirmed');</code></td>
+<td align="left">BOOLEAN equivalent for the database.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>$table-&gt;char('name', 4);</code></td>
+<td align="left">CHAR equivalent with a length.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>$table-&gt;date('created_at');</code></td>
+<td align="left">DATE equivalent for the database.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>$table-&gt;dateTime('created_at');</code></td>
+<td align="left">DATETIME equivalent for the database.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>$table-&gt;decimal('amount', 5, 2);</code></td>
+<td align="left">DECIMAL equivalent with a precision and scale.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>$table-&gt;double('column', 15, 8);</code></td>
+<td align="left">DOUBLE equivalent with precision, 15 digits in total and 8 after the decimal point.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>$table-&gt;enum('choices', ['foo', 'bar']);</code></td>
+<td align="left">ENUM equivalent for the database.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>$table-&gt;float('amount');</code></td>
+<td align="left">FLOAT equivalent for the database.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>$table-&gt;increments('id');</code></td>
+<td align="left">Incrementing ID (primary key) using a &quot;UNSIGNED INTEGER&quot; equivalent.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>$table-&gt;integer('votes');</code></td>
+<td align="left">INTEGER equivalent for the database.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>$table-&gt;json('options');</code></td>
+<td align="left">JSON equivalent for the database.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>$table-&gt;jsonb('options');</code></td>
+<td align="left">JSONB equivalent for the database.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>$table-&gt;longText('description');</code></td>
+<td align="left">LONGTEXT equivalent for the database.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>$table-&gt;mediumInteger('numbers');</code></td>
+<td align="left">MEDIUMINT equivalent for the database.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>$table-&gt;mediumText('description');</code></td>
+<td align="left">MEDIUMTEXT equivalent for the database.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>$table-&gt;morphs('taggable');</code></td>
+<td align="left">Adds INTEGER <code>taggable_id</code> and STRING <code>taggable_type</code>.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>$table-&gt;nullableTimestamps();</code></td>
+<td align="left">Same as <code>timestamps()</code>, except allows NULLs.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>$table-&gt;rememberToken();</code></td>
+<td align="left">Adds <code>remember_token</code> as VARCHAR(100) NULL.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>$table-&gt;smallInteger('votes');</code></td>
+<td align="left">SMALLINT equivalent for the database.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>$table-&gt;softDeletes();</code></td>
+<td align="left">Adds <code>deleted_at</code> column for soft deletes.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>$table-&gt;string('email');</code></td>
+<td align="left">VARCHAR equivalent column.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>$table-&gt;string('name', 100);</code></td>
+<td align="left">VARCHAR equivalent with a length.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>$table-&gt;text('description');</code></td>
+<td align="left">TEXT equivalent for the database.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>$table-&gt;time('sunrise');</code></td>
+<td align="left">TIME equivalent for the database.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>$table-&gt;tinyInteger('numbers');</code></td>
+<td align="left">TINYINT equivalent for the database.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>$table-&gt;timestamp('added_on');</code></td>
+<td align="left">TIMESTAMP equivalent for the database.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>$table-&gt;timestamps();</code></td>
+<td align="left">Adds <code>created_at</code> and <code>updated_at</code> columns.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>$table-&gt;uuid('id');</code></td>
+<td align="left">UUID equivalent for the database.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="column-modifiers">Column Modifiers</h4>
+<p>In addition to the column types listed above, there are several other column &quot;modifiers&quot; which you may use while adding the column. For example, to make the column &quot;nullable&quot;, you may use the <code>nullable</code> method:</p>
+<pre><code>Schema::table(&#39;users&#39;, function ($table) {
+    $table-&gt;string(&#39;email&#39;)-&gt;nullable();
+});</code></pre>
+<p>Below is a list of all the available column modifiers. This list does not include the <a href="#creating-indexes">index modifiers</a>:</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Modifier</th>
+<th align="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left"><code>-&gt;first()</code></td>
+<td align="left">Place the column &quot;first&quot; in the table (MySQL Only)</td>
+</tr>
+<tr class="even">
+<td align="left"><code>-&gt;after('column')</code></td>
+<td align="left">Place the column &quot;after&quot; another column (MySQL Only)</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>-&gt;nullable()</code></td>
+<td align="left">Allow NULL values to be inserted into the column</td>
+</tr>
+<tr class="even">
+<td align="left"><code>-&gt;default($value)</code></td>
+<td align="left">Specify a &quot;default&quot; value for the column</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>-&gt;unsigned()</code></td>
+<td align="left">Set <code>integer</code> columns to <code>UNSIGNED</code></td>
+</tr>
+</tbody>
+</table>
+<p><a name="changing-columns"></a> <a name="modifying-columns"></a> ### Modifying Columns</p>
+<h4 id="prerequisites">Prerequisites</h4>
+<p>Before modifying a column, be sure to add the <code>doctrine/dbal</code> dependency to your <code>composer.json</code> file. The Doctrine DBAL library is used to determine the current state of the column and create the SQL queries needed to make the specified adjustments to the column.</p>
+<h4 id="updating-column-attributes">Updating Column Attributes</h4>
+<p>The <code>change</code> method allows you to modify an existing column to a new type, or modify the column's attributes. For example, you may wish to increase the size of a string column. To see the <code>change</code> method in action, let's increase the size of the <code>name</code> column from 25 to 50:</p>
+<pre><code>Schema::table(&#39;users&#39;, function ($table) {
+    $table-&gt;string(&#39;name&#39;, 50)-&gt;change();
+});</code></pre>
+<p>We could also modify a column to be nullable:</p>
+<pre><code>Schema::table(&#39;users&#39;, function ($table) {
+    $table-&gt;string(&#39;name&#39;, 50)-&gt;nullable()-&gt;change();
+});</code></pre>
+<p><a name="renaming-columns"></a> #### Renaming Columns</p>
+<p>To rename a column, you may use the <code>renameColumn</code> method on the Schema builder. Before renaming a column, be sure to add the <code>doctrine/dbal</code> dependency to your <code>composer.json</code> file:</p>
+<pre><code>Schema::table(&#39;users&#39;, function ($table) {
+    $table-&gt;renameColumn(&#39;from&#39;, &#39;to&#39;);
+});</code></pre>
+<blockquote>
+<p><strong>Note:</strong> Renaming columns in a table with a <code>enum</code> column is not currently supported.</p>
+</blockquote>
+<p><a name="dropping-columns"></a> ### Dropping Columns</p>
+<p>To drop a column, use the <code>dropColumn</code> method on the Schema builder:</p>
+<pre><code>Schema::table(&#39;users&#39;, function ($table) {
+    $table-&gt;dropColumn(&#39;votes&#39;);
+});</code></pre>
+<p>You may drop multiple columns from a table by passing an array of column names to the <code>dropColumn</code> method:</p>
+<pre><code>Schema::table(&#39;users&#39;, function ($table) {
+    $table-&gt;dropColumn([&#39;votes&#39;, &#39;avatar&#39;, &#39;location&#39;]);
+});</code></pre>
+<blockquote>
+<p><strong>Note:</strong> Before dropping columns from a SQLite database, you will need to add the <code>doctrine/dbal</code> dependency to your <code>composer.json</code> file and run the <code>composer update</code> command in your terminal to install the library.</p>
+</blockquote>
+<blockquote>
+<p><strong>Note:</strong> Dropping or modifying multiple columns within a single migration while using a SQLite database is not supported.</p>
+</blockquote>
+<p><a name="creating-indexes"></a> ### Creating Indexes</p>
+<p>The schema builder supports several types of indexes. First, let's look at an example that specifies a column's values should be unique. To create the index, we can simply chain the <code>unique</code> method onto the column definition:</p>
+<pre><code>$table-&gt;string(&#39;email&#39;)-&gt;unique();</code></pre>
+<p>Alternatively, you may create the index after defining the column. For example:</p>
+<pre><code>$table-&gt;unique(&#39;email&#39;);</code></pre>
+<p>You may even pass an array of columns to an index method to create a compound index:</p>
+<pre><code>$table-&gt;index([&#39;account_id&#39;, &#39;created_at&#39;]);</code></pre>
+<p>Laravel will automatically generate a reasonable index name, but you may pass a second argument to the method to specify the name yourself:</p>
+<pre><code>$table-&gt;index(&#39;email&#39;, &#39;my_index_name&#39;);</code></pre>
+<h4 id="available-index-types">Available Index Types</h4>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Command</th>
+<th align="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left"><code>$table-&gt;primary('id');</code></td>
+<td align="left">Add a primary key.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>$table-&gt;primary(['first', 'last']);</code></td>
+<td align="left">Add composite keys.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>$table-&gt;unique('email');</code></td>
+<td align="left">Add a unique index.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>$table-&gt;unique('state', 'my_index_name');</code></td>
+<td align="left">Add a custom index name.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>$table-&gt;index('state');</code></td>
+<td align="left">Add a basic index.</td>
+</tr>
+</tbody>
+</table>
+<p><a name="dropping-indexes"></a> ### Dropping Indexes</p>
+<p>To drop an index, you must specify the index's name. By default, Laravel automatically assigns a reasonable name to the indexes. Simply concatenate the table name, the name of the indexed column, and the index type. Here are some examples:</p>
+<table style="width:39%;">
+<colgroup>
+<col width="19%" />
+<col width="19%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">Command</th>
+<th align="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left"><code>$table-&gt;dropPrimary('users_id_primary');</code></td>
+<td align="left">Drop a primary key from the &quot;users&quot; table.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>$table-&gt;dropUnique('users_email_unique');</code></td>
+<td align="left">Drop a unique index from the &quot;users&quot; table.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>$table-&gt;dropIndex('geo_state_index');</code></td>
+<td align="left">Drop a basic index from the &quot;geo&quot; table.</td>
+</tr>
+</tbody>
+</table>
+<p><a name="foreign-key-constraints"></a> ### Foreign Key Constraints</p>
+<p>Laravel also provides support for creating foreign key constraints, which are used to force referential integrity at the database level. For example, let's define a <code>user_id</code> column on the <code>posts</code> table that references the <code>id</code> column on a <code>users</code> table:</p>
+<pre><code>Schema::table(&#39;posts&#39;, function ($table) {
+    $table-&gt;integer(&#39;user_id&#39;)-&gt;unsigned();
+
+    $table-&gt;foreign(&#39;user_id&#39;)-&gt;references(&#39;id&#39;)-&gt;on(&#39;users&#39;);
+});</code></pre>
+<p>You may also specify the desired action for the &quot;on delete&quot; and &quot;on update&quot; properties of the constraint:</p>
+<pre><code>$table-&gt;foreign(&#39;user_id&#39;)
+      -&gt;references(&#39;id&#39;)-&gt;on(&#39;users&#39;)
+      -&gt;onDelete(&#39;cascade&#39;);</code></pre>
+<p>To drop a foreign key, you may use the <code>dropForeign</code> method. Foreign key constraints use the same naming convention as indexes. So, we will concatenate the table name and the columns in the constraint then suffix the name with &quot;_foreign&quot;:</p>
+<pre><code>$table-&gt;dropForeign(&#39;posts_user_id_foreign&#39;);</code></pre>
+</body>
+</html>

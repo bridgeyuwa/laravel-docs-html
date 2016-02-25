@@ -1,0 +1,140 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+</head>
+<body>
+<h1 id="envoy-task-runner">Envoy Task Runner</h1>
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#writing-tasks">Writing Tasks</a>
+<ul>
+<li><a href="#task-variables">Task Variables</a></li>
+<li><a href="#envoy-multiple-servers">Multiple Servers</a></li>
+<li><a href="#envoy-task-macros">Task Macros</a></li>
+</ul></li>
+<li><a href="#envoy-running-tasks">Running Tasks</a></li>
+<li><a href="#envoy-notifications">Notifications</a>
+<ul>
+<li><a href="#hipchat">HipChat</a></li>
+<li><a href="#slack">Slack</a></li>
+</ul></li>
+</ul>
+<p><a name="introduction"></a> ## Introduction</p>
+<p><a href="https://github.com/laravel/envoy">Laravel Envoy</a> provides a clean, minimal syntax for defining common tasks you run on your remote servers. Using a Blade style syntax, you can easily setup tasks for deployment, Artisan commands, and more. Currently, Envoy only supports the Mac and Linux operating systems.</p>
+<p><a name="envoy-installation"></a> ### Installation</p>
+<p>First, install Envoy using the Composer <code>global</code> command:</p>
+<pre><code>composer global require &quot;laravel/envoy=~1.0&quot;</code></pre>
+<p>Make sure to place the <code>~/.composer/vendor/bin</code> directory in your PATH so the <code>envoy</code> executable is found when you run the <code>envoy</code> command in your terminal.</p>
+<h4 id="updating-envoy">Updating Envoy</h4>
+<p>You may also use Composer to keep your Envoy installation up to date:</p>
+<pre><code>composer global update</code></pre>
+<p><a name="writing-tasks"></a> ## Writing Tasks</p>
+<p>All of your Envoy tasks should be defined in an <code>Envoy.blade.php</code> file in the root of your project. Here's an example to get you started:</p>
+<pre><code>@servers([&#39;web&#39; =&gt; &#39;user@192.168.1.1&#39;])
+
+@task(&#39;foo&#39;, [&#39;on&#39; =&gt; &#39;web&#39;])
+    ls -la
+@endtask</code></pre>
+<p>As you can see, an array of <code>@servers</code> is defined at the top of the file, allowing you to reference these servers in the <code>on</code> option of your task declarations. Within your <code>@task</code> declarations, you should place the Bash code that will be run on your server when the task is executed.</p>
+<h4 id="bootstrapping">Bootstrapping</h4>
+<p>Sometimes, you may need to execute some PHP code before evaluating your Envoy tasks. You may use the <code>@setup</code> directive to declare variables and do general PHP work inside the Envoy file:</p>
+<pre><code>@setup
+    $now = new DateTime();
+
+    $environment = isset($env) ? $env : &quot;testing&quot;;
+@endsetup</code></pre>
+<p>You may also use <code>@include</code> to include any outside PHP files:</p>
+<pre><code>@include(&#39;vendor/autoload.php&#39;)</code></pre>
+<h4 id="confirming-tasks">Confirming Tasks</h4>
+<p>If you would like to be prompted for confirmation before running a given task on your servers, you may add the <code>confirm</code> directive to your task declaration:</p>
+<pre><code>@task(&#39;deploy&#39;, [&#39;on&#39; =&gt; &#39;web&#39;, &#39;confirm&#39; =&gt; true])
+    cd site
+    git pull origin {{ $branch }}
+    php artisan migrate
+@endtask</code></pre>
+<p><a name="task-variables"></a> ### Task Variables</p>
+<p>If needed, you may pass variables into the Envoy file using command line switches, allowing you to customize your tasks:</p>
+<pre><code>envoy run deploy --branch=master</code></pre>
+<p>You may use the options in your tasks via Blade's &quot;echo&quot; syntax:</p>
+<pre><code>@servers([&#39;web&#39; =&gt; &#39;192.168.1.1&#39;])
+
+@task(&#39;deploy&#39;, [&#39;on&#39; =&gt; &#39;web&#39;])
+    cd site
+    git pull origin {{ $branch }}
+    php artisan migrate
+@endtask</code></pre>
+<p><a name="envoy-multiple-servers"></a> ### Multiple Servers</p>
+<p>You may easily run a task across multiple servers. First, add additional servers to your <code>@servers</code> declaration. Each server should be assigned a unique name. Once you have defined your additional servers, simply list the servers in the task declaration's <code>on</code> array:</p>
+<pre><code>@servers([&#39;web-1&#39; =&gt; &#39;192.168.1.1&#39;, &#39;web-2&#39; =&gt; &#39;192.168.1.2&#39;])
+
+@task(&#39;deploy&#39;, [&#39;on&#39; =&gt; [&#39;web-1&#39;, &#39;web-2&#39;]])
+    cd site
+    git pull origin {{ $branch }}
+    php artisan migrate
+@endtask</code></pre>
+<p>By default, the task will be executed on each server serially. Meaning, the task will finish running on the first server before proceeding to execute on the next server.</p>
+<h4 id="parallel-execution">Parallel Execution</h4>
+<p>If you would like to run a task across multiple servers in parallel, add the <code>parallel</code> option to your task declaration:</p>
+<pre><code>@servers([&#39;web-1&#39; =&gt; &#39;192.168.1.1&#39;, &#39;web-2&#39; =&gt; &#39;192.168.1.2&#39;])
+
+@task(&#39;deploy&#39;, [&#39;on&#39; =&gt; [&#39;web-1&#39;, &#39;web-2&#39;], &#39;parallel&#39; =&gt; true])
+    cd site
+    git pull origin {{ $branch }}
+    php artisan migrate
+@endtask</code></pre>
+<p><a name="envoy-task-macros"></a> ### Task Macros</p>
+<p>Macros allow you to define a set of tasks to be run in sequence using a single command. For instance, a <code>deploy</code> macro may run the <code>git</code> and <code>composer</code> tasks:</p>
+<pre><code>@servers([&#39;web&#39; =&gt; &#39;192.168.1.1&#39;])
+
+@macro(&#39;deploy&#39;)
+    git
+    composer
+@endmacro
+
+@task(&#39;git&#39;)
+    git pull origin master
+@endtask
+
+@task(&#39;composer&#39;)
+    composer install
+@endtask</code></pre>
+<p>Once the macro has been defined, you may run it via single, simple command:</p>
+<pre><code>envoy run deploy</code></pre>
+<p><a name="envoy-running-tasks"></a> ## Running Tasks</p>
+<p>To run a task from your <code>Envoy.blade.php</code> file, execute Envoy's <code>run</code> command, passing the command the name of the task or macro you would like to execute. Envoy will run the task and display the output from the servers as the task is running:</p>
+<pre><code>envoy run task</code></pre>
+<p><a name="envoy-notifications"></a> <a name="envoy-hipchat-notifications"></a> ## Notifications</p>
+<p><a name="hipchat"></a> ### HipChat</p>
+<p>After running a task, you may send a notification to your team's HipChat room using Envoy's <code>@hipchat</code> directive. The directive accepts an API token, the name of the room, and the username to be displayed as the sender of the message:</p>
+<pre><code>@servers([&#39;web&#39; =&gt; &#39;192.168.1.1&#39;])
+
+@task(&#39;foo&#39;, [&#39;on&#39; =&gt; &#39;web&#39;])
+    ls -la
+@endtask
+
+@after
+    @hipchat(&#39;token&#39;, &#39;room&#39;, &#39;Envoy&#39;)
+@endafter</code></pre>
+<p>If you wish, you may also pass a custom message to send to the HipChat room. Any variables available to your Envoy tasks will also be available when constructing the message:</p>
+<pre><code>@after
+    @hipchat(&#39;token&#39;, &#39;room&#39;, &#39;Envoy&#39;, &quot;{$task} ran in the {$env} environment.&quot;)
+@endafter</code></pre>
+<p><a name="slack"></a> ### Slack</p>
+<p>In addition to HipChat, Envoy also supports sending notifications to <a href="https://slack.com">Slack</a>. The <code>@slack</code> directive accepts a Slack hook URL, a channel name, and the message you wish to send to the channel:</p>
+<pre><code>@after
+    @slack(&#39;hook&#39;, &#39;channel&#39;, &#39;message&#39;)
+@endafter</code></pre>
+<p>You may retrieve your webhook URL by creating an <code>Incoming WebHooks</code> integration on Slack's website. The <code>hook</code> argument should be the entire webhook URL provided by the Incoming Webhooks Slack Integration. For example:</p>
+<pre><code>https://hooks.slack.com/services/ZZZZZZZZZ/YYYYYYYYY/XXXXXXXXXXXXXXX</code></pre>
+<p>You may provide one of the following as the channel argument:</p>
+<ul>
+<li>To send the notification to a channel: <code>#channel</code></li>
+<li>To send the notification to a user: <code>@user</code></li>
+</ul>
+</body>
+</html>

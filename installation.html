@@ -1,0 +1,60 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+</head>
+<body>
+<h1 id="installation">Installation</h1>
+<ul>
+<li><a href="#installation">Installation</a>
+<ul>
+<li><a href="#server-requirements">Server Requirements</a></li>
+<li><a href="#installing-laravel">Installing Laravel</a></li>
+<li><a href="#configuration">Configuration</a></li>
+</ul></li>
+</ul>
+<p><a name="installation"></a> ## Installation</p>
+<p><a name="server-requirements"></a> ### Server Requirements</p>
+<p>The Laravel framework has a few system requirements. Of course, all of these requirements are satisfied by the <a href="/docs/%7B%7Bversion%7D%7D/homestead">Laravel Homestead</a> virtual machine, so it's highly recommended that you use Homestead as your local Laravel development environment.</p>
+<p>However, if you are not using Homestead, you will need to make sure your server meets the following requirements:</p>
+<div class="content-list" markdown="1">
+<ul>
+<li>PHP &gt;= 5.5.9</li>
+<li>OpenSSL PHP Extension</li>
+<li>PDO PHP Extension</li>
+<li>Mbstring PHP Extension</li>
+<li>Tokenizer PHP Extension</li>
+</ul>
+</div>
+<p><a name="installing-laravel"></a> ### Installing Laravel</p>
+<p>Laravel utilizes <a href="http://getcomposer.org">Composer</a> to manage its dependencies. So, before using Laravel, make sure you have Composer installed on your machine.</p>
+<h4 id="via-laravel-installer">Via Laravel Installer</h4>
+<p>First, download the Laravel installer using Composer:</p>
+<pre><code>composer global require &quot;laravel/installer&quot;</code></pre>
+<p>Make sure to place the <code>~/.composer/vendor/bin</code> directory in your PATH so the <code>laravel</code> executable can be located by your system.</p>
+<p>Once installed, the <code>laravel new</code> command will create a fresh Laravel installation in the directory you specify. For instance, <code>laravel new blog</code> will create a directory named <code>blog</code> containing a fresh Laravel installation with all of Laravel's dependencies already installed. This method of installation is much faster than installing via Composer:</p>
+<pre><code>laravel new blog</code></pre>
+<h4 id="via-composer-create-project">Via Composer Create-Project</h4>
+<p>Alternatively, you may also install Laravel by issuing the Composer <code>create-project</code> command in your terminal:</p>
+<pre><code>composer create-project --prefer-dist laravel/laravel blog</code></pre>
+<p><a name="configuration"></a> ### Configuration</p>
+<p>All of the configuration files for the Laravel framework are stored in the <code>config</code> directory. Each option is documented, so feel free to look through the files and get familiar with the options available to you.</p>
+<h4 id="directory-permissions">Directory Permissions</h4>
+<p>After installing Laravel, you may need to configure some permissions. Directories within the <code>storage</code> and the <code>bootstrap/cache</code> directories should be writable by your web server or Laravel will not run. If you are using the <a href="/docs/%7B%7Bversion%7D%7D/homestead">Homestead</a> virtual machine, these permissions should already be set.</p>
+<h4 id="application-key">Application Key</h4>
+<p>The next thing you should do after installing Laravel is set your application key to a random string. If you installed Laravel via Composer or the Laravel installer, this key has already been set for you by the <code>key:generate</code> command. Typically, this string should be 32 characters long. The key can be set in the <code>.env</code> environment file. If you have not renamed the <code>.env.example</code> file to <code>.env</code>, you should do that now. <strong>If the application key is not set, your user sessions and other encrypted data will not be secure!</strong></p>
+<h4 id="additional-configuration">Additional Configuration</h4>
+<p>Laravel needs almost no other configuration out of the box. You are free to get started developing! However, you may wish to review the <code>config/app.php</code> file and its documentation. It contains several options such as <code>timezone</code> and <code>locale</code> that you may wish to change according to your application.</p>
+<p>You may also want to configure a few additional components of Laravel, such as:</p>
+<ul>
+<li><a href="/docs/%7B%7Bversion%7D%7D/cache#configuration">Cache</a></li>
+<li><a href="/docs/%7B%7Bversion%7D%7D/database#configuration">Database</a></li>
+<li><a href="/docs/%7B%7Bversion%7D%7D/session#configuration">Session</a></li>
+</ul>
+<p>Once Laravel is installed, you should also <a href="/docs/%7B%7Bversion%7D%7D/configuration#environment-configuration">configure your local environment</a>.</p>
+</body>
+</html>

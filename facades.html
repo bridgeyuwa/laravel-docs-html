@@ -1,0 +1,242 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+</head>
+<body>
+<h1 id="facades">Facades</h1>
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#using-facades">Using Facades</a></li>
+<li><a href="#facade-class-reference">Facade Class Reference</a></li>
+</ul>
+<p><a name="introduction"></a> ## Introduction</p>
+<p>Facades provide a &quot;static&quot; interface to classes that are available in the application's <a href="/docs/%7B%7Bversion%7D%7D/container">service container</a>. Laravel ships with many facades, and you have probably been using them without even knowing it! Laravel &quot;facades&quot; serve as &quot;static proxies&quot; to underlying classes in the service container, providing the benefit of a terse, expressive syntax while maintaining more testability and flexibility than traditional static methods.</p>
+<p><a name="using-facades"></a> ## Using Facades</p>
+<p>In the context of a Laravel application, a facade is a class that provides access to an object from the container. The machinery that makes this work is in the <code>Facade</code> class. Laravel's facades, and any custom facades you create, will extend the base <code>Illuminate\Support\Facades\Facade</code> class.</p>
+<p>A facade class only needs to implement a single method: <code>getFacadeAccessor</code>. It's the <code>getFacadeAccessor</code> method's job to define what to resolve from the container. The <code>Facade</code> base class makes use of the <code>__callStatic()</code> magic-method to defer calls from your facade to the resolved object.</p>
+<p>In the example below, a call is made to the Laravel cache system. By glancing at this code, one might assume that the static method <code>get</code> is being called on the <code>Cache</code> class:</p>
+<pre><code>&lt;?php
+
+namespace App\Http\Controllers;
+
+use Cache;
+use App\Http\Controllers\Controller;
+
+class UserController extends Controller
+{
+    /**
+     * Show the profile for the given user.
+     *
+     * @param  int  $id
+     * @return Response
+     */
+    public function showProfile($id)
+    {
+        $user = Cache::get(&#39;user:&#39;.$id);
+
+        return view(&#39;profile&#39;, [&#39;user&#39; =&gt; $user]);
+    }
+}</code></pre>
+<p>Notice that near the top of the file we are &quot;importing&quot; the <code>Cache</code> facade. This facade serves as a proxy to accessing the underlying implementation of the <code>Illuminate\Contracts\Cache\Factory</code> interface. Any calls we make using the facade will be passed to the underlying instance of Laravel's cache service.</p>
+<p>If we look at that <code>Illuminate\Support\Facades\Cache</code> class, you'll see that there is no static method <code>get</code>:</p>
+<pre><code>class Cache extends Facade
+{
+    /**
+     * Get the registered name of the component.
+     *
+     * @return string
+     */
+    protected static function getFacadeAccessor() { return &#39;cache&#39;; }
+}</code></pre>
+<p>Instead, the <code>Cache</code> facade extends the base <code>Facade</code> class and defines the method <code>getFacadeAccessor()</code>. Remember, this method's job is to return the name of a service container binding. When a user references any static method on the <code>Cache</code> facade, Laravel resolves the <code>cache</code> binding from the <a href="/docs/%7B%7Bversion%7D%7D/container">service container</a> and runs the requested method (in this case, <code>get</code>) against that object.</p>
+<p><a name="facade-class-reference"></a> ## Facade Class Reference</p>
+<p>Below you will find every facade and its underlying class. This is a useful tool for quickly digging into the API documentation for a given facade root. The <a href="/docs/%7B%7Bversion%7D%7D/container">service container binding</a> key is also included where applicable.</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Facade</th>
+<th align="left">Class</th>
+<th align="left">Service Container Binding</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">App</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Foundation/Application.html">Illuminate</a></td>
+<td align="left"><code>app</code></td>
+</tr>
+<tr class="even">
+<td align="left">Artisan</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Contracts/Console/Kernel.html">Illuminate</a></td>
+<td align="left"><code>artisan</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Auth</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Auth/AuthManager.html">Illuminate</a></td>
+<td align="left"><code>auth</code></td>
+</tr>
+<tr class="even">
+<td align="left">Blade</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/View/Compilers/BladeCompiler.html">Illuminate</a></td>
+<td align="left"><code>blade.compiler</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Bus</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Contracts/Bus/Dispatcher.html">Illuminate</a></td>
+</tr>
+<tr class="even">
+<td align="left">Cache</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Cache/Repository.html">Illuminate</a></td>
+<td align="left"><code>cache</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Config</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Config/Repository.html">Illuminate</a></td>
+<td align="left"><code>config</code></td>
+</tr>
+<tr class="even">
+<td align="left">Cookie</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Cookie/CookieJar.html">Illuminate</a></td>
+<td align="left"><code>cookie</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Crypt</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Encryption/Encrypter.html">Illuminate</a></td>
+<td align="left"><code>encrypter</code></td>
+</tr>
+<tr class="even">
+<td align="left">DB</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Database/DatabaseManager.html">Illuminate</a></td>
+<td align="left"><code>db</code></td>
+</tr>
+<tr class="odd">
+<td align="left">DB (Instance)</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Database/Connection.html">Illuminate</a></td>
+</tr>
+<tr class="even">
+<td align="left">Event</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Events/Dispatcher.html">Illuminate</a></td>
+<td align="left"><code>events</code></td>
+</tr>
+<tr class="odd">
+<td align="left">File</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Filesystem/Filesystem.html">Illuminate</a></td>
+<td align="left"><code>files</code></td>
+</tr>
+<tr class="even">
+<td align="left">Gate</td>
+<td align="left"><a href="http://laravel.com/api/5.1/Illuminate/Contracts/Auth/Access/Gate.html">Illuminate</a></td>
+</tr>
+<tr class="odd">
+<td align="left">Hash</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Contracts/Hashing/Hasher.html">Illuminate</a></td>
+<td align="left"><code>hash</code></td>
+</tr>
+<tr class="even">
+<td align="left">Lang</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Translation/Translator.html">Illuminate</a></td>
+<td align="left"><code>translator</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Log</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Log/Writer.html">Illuminate</a></td>
+<td align="left"><code>log</code></td>
+</tr>
+<tr class="even">
+<td align="left">Mail</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Mail/Mailer.html">Illuminate</a></td>
+<td align="left"><code>mailer</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Password</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Auth/Passwords/PasswordBroker.html">Illuminate</a></td>
+<td align="left"><code>auth.password</code></td>
+</tr>
+<tr class="even">
+<td align="left">Queue</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Queue/QueueManager.html">Illuminate</a></td>
+<td align="left"><code>queue</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Queue (Instance)</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Contracts/Queue/Queue.html">Illuminate</a></td>
+<td align="left"><code>queue</code></td>
+</tr>
+<tr class="even">
+<td align="left">Queue (Base Class)</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Queue/Queue.html">Illuminate</a></td>
+</tr>
+<tr class="odd">
+<td align="left">Redirect</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Routing/Redirector.html">Illuminate</a></td>
+<td align="left"><code>redirect</code></td>
+</tr>
+<tr class="even">
+<td align="left">Redis</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Redis/Database.html">Illuminate</a></td>
+<td align="left"><code>redis</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Request</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Http/Request.html">Illuminate</a></td>
+<td align="left"><code>request</code></td>
+</tr>
+<tr class="even">
+<td align="left">Response</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Contracts/Routing/ResponseFactory.html">Illuminate</a></td>
+</tr>
+<tr class="odd">
+<td align="left">Route</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Routing/Router.html">Illuminate</a></td>
+<td align="left"><code>router</code></td>
+</tr>
+<tr class="even">
+<td align="left">Schema</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Database/Schema/Blueprint.html">Illuminate</a></td>
+</tr>
+<tr class="odd">
+<td align="left">Session</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Session/SessionManager.html">Illuminate</a></td>
+<td align="left"><code>session</code></td>
+</tr>
+<tr class="even">
+<td align="left">Session (Instance)</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Session/Store.html">Illuminate</a></td>
+</tr>
+<tr class="odd">
+<td align="left">Storage</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Contracts/Filesystem/Factory.html">Illuminate</a></td>
+<td align="left"><code>filesystem</code></td>
+</tr>
+<tr class="even">
+<td align="left">URL</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Routing/UrlGenerator.html">Illuminate</a></td>
+<td align="left"><code>url</code></td>
+</tr>
+<tr class="odd">
+<td align="left">Validator</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Validation/Factory.html">Illuminate</a></td>
+<td align="left"><code>validator</code></td>
+</tr>
+<tr class="even">
+<td align="left">Validator (Instance)</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/Validation/Validator.html">Illuminate</a></td>
+</tr>
+<tr class="odd">
+<td align="left">View</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/View/Factory.html">Illuminate</a></td>
+<td align="left"><code>view</code></td>
+</tr>
+<tr class="even">
+<td align="left">View (Instance)</td>
+<td align="left"><a href="http://laravel.com/api/%7B%7Bversion%7D%7D/Illuminate/View/View.html">Illuminate</a></td>
+</tr>
+</tbody>
+</table>
+</body>
+</html>

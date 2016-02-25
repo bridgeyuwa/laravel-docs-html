@@ -1,0 +1,77 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+</head>
+<body>
+<h1 id="eloquent-collections">Eloquent: Collections</h1>
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#available-methods">Available Methods</a></li>
+<li><a href="#custom-collections">Custom Collections</a></li>
+</ul>
+<p><a name="introduction"></a> ## Introduction</p>
+<p>All multi-result sets returned by Eloquent are an instance of the <code>Illuminate\Database\Eloquent\Collection</code> object, including results retrieved via the <code>get</code> method or accessed via a relationship. The Eloquent collection object extends the Laravel <a href="/docs/%7B%7Bversion%7D%7D/collections">base collection</a>, so it naturally inherits dozens of methods used to fluently work with the underlying array of Eloquent models.</p>
+<p>Of course, all collections also serve as iterators, allowing you to loop over them as if they were simple PHP arrays:</p>
+<pre><code>$users = App\User::where(&#39;active&#39;, 1)-&gt;get();
+
+foreach ($users as $user) {
+    echo $user-&gt;name;
+}</code></pre>
+<p>However, collections are much more powerful than arrays and expose a variety of map / reduce operations that may be chained using an intuitive interface. For example, let's remove all inactive models and gather the first name for each remaining user:</p>
+<pre><code>$users = App\User::where(&#39;active&#39;, 1)-&gt;get();
+
+$names = $users-&gt;reject(function ($user) {
+    return $user-&gt;active === false;
+})
+-&gt;map(function ($user) {
+    return $user-&gt;name;
+});</code></pre>
+<blockquote>
+<p><strong>Note:</strong> While most Eloquent collection methods return a new instance of an Eloquent collection, the <code>pluck</code>, <code>keys</code>, <code>zip</code>, <code>collapse</code>, <code>flatten</code> and <code>flip</code> methods return a <a href="/docs/%7B%7Bversion%7D%7D/collections">base collection</a> instance.</p>
+</blockquote>
+<p><a name="available-methods"></a> ## Available Methods</p>
+<h3 id="the-base-collection">The Base Collection</h3>
+<p>All Eloquent collections extend the base <a href="/docs/%7B%7Bversion%7D%7D/collections">Laravel collection</a> object; therefore, they inherit all of the powerful methods provided by the base collection class:</p>
+<style>
+    #collection-method-list > p {
+        column-count: 3; -moz-column-count: 3; -webkit-column-count: 3;
+        column-gap: 2em; -moz-column-gap: 2em; -webkit-column-gap: 2em;
+    }
+
+    #collection-method-list a {
+        display: block;
+    }
+</style>
+<div id="collection-method-list" markdown="1">
+<p><a href="/docs/%7B%7Bversion%7D%7D/collections#method-all">all</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-chunk">chunk</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-collapse">collapse</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-contains">contains</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-count">count</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-diff">diff</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-each">each</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-every">every</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-filter">filter</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-first">first</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-flatten">flatten</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-flip">flip</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-forget">forget</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-forpage">forPage</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-get">get</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-groupby">groupBy</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-has">has</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-implode">implode</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-intersect">intersect</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-isempty">isEmpty</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-keyby">keyBy</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-keys">keys</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-last">last</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-map">map</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-merge">merge</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-pluck">pluck</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-pop">pop</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-prepend">prepend</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-pull">pull</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-push">push</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-put">put</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-random">random</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-reduce">reduce</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-reject">reject</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-reverse">reverse</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-search">search</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-shift">shift</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-shuffle">shuffle</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-slice">slice</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-sort">sort</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-sortby">sortBy</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-sortbydesc">sortByDesc</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-splice">splice</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-sum">sum</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-take">take</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-toarray">toArray</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-tojson">toJson</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-transform">transform</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-unique">unique</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-values">values</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-where">where</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-whereloose">whereLoose</a> <a href="/docs/%7B%7Bversion%7D%7D/collections#method-zip">zip</a></p>
+</div>
+<p><a name="custom-collections"></a> ## Custom Collections</p>
+<p>If you need to use a custom <code>Collection</code> object with your own extension methods, you may override the <code>newCollection</code> method on your model:</p>
+<pre><code>&lt;?php
+
+namespace App;
+
+use App\CustomCollection;
+use Illuminate\Database\Eloquent\Model;
+
+class User extends Model
+{
+    /**
+     * Create a new Eloquent Collection instance.
+     *
+     * @param  array  $models
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function newCollection(array $models = [])
+    {
+        return new CustomCollection($models);
+    }
+}</code></pre>
+<p>Once you have defined a <code>newCollection</code> method, you will receive an instance of your custom collection anytime Eloquent returns a <code>Collection</code> instance of that model. If you would like to use a custom collection for every model in your application, you should override the <code>newCollection</code> method on a model base class that is extended by all of your models.</p>
+</body>
+</html>

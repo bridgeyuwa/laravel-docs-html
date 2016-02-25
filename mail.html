@@ -1,0 +1,191 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+</head>
+<body>
+<h1 id="mail">Mail</h1>
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#sending-mail">Sending Mail</a>
+<ul>
+<li><a href="#attachments">Attachments</a></li>
+<li><a href="#inline-attachments">Inline Attachments</a></li>
+<li><a href="#queueing-mail">Queueing Mail</a></li>
+</ul></li>
+<li><a href="#mail-and-local-development">Mail &amp; Local Development</a></li>
+<li><a href="#events">Events</a></li>
+</ul>
+<p><a name="introduction"></a> ## Introduction</p>
+<p>Laravel provides a clean, simple API over the popular <a href="http://swiftmailer.org">SwiftMailer</a> library. Laravel provides drivers for SMTP, Mailgun, Mandrill, Amazon SES, PHP's <code>mail</code> function, and <code>sendmail</code>, allowing you to quickly get started sending mail through a local or cloud based service of your choice.</p>
+<h3 id="driver-prerequisites">Driver Prerequisites</h3>
+<p>The API based drivers such as Mailgun and Mandrill are often simpler and faster than SMTP servers. All of the API drivers require that the Guzzle HTTP library be installed for your application. You may install Guzzle to your project by adding the following line to your <code>composer.json</code> file:</p>
+<pre><code>&quot;guzzlehttp/guzzle&quot;: &quot;~5.3|~6.0&quot;</code></pre>
+<h4 id="mailgun-driver">Mailgun Driver</h4>
+<p>To use the Mailgun driver, first install Guzzle, then set the <code>driver</code> option in your <code>config/mail.php</code> configuration file to <code>mailgun</code>. Next, verify that your <code>config/services.php</code> configuration file contains the following options:</p>
+<pre><code>&#39;mailgun&#39; =&gt; [
+    &#39;domain&#39; =&gt; &#39;your-mailgun-domain&#39;,
+    &#39;secret&#39; =&gt; &#39;your-mailgun-key&#39;,
+],</code></pre>
+<h4 id="mandrill-driver">Mandrill Driver</h4>
+<p>To use the Mandrill driver, first install Guzzle, then set the <code>driver</code> option in your <code>config/mail.php</code> configuration file to <code>mandrill</code>. Next, verify that your <code>config/services.php</code> configuration file contains the following options:</p>
+<pre><code>&#39;mandrill&#39; =&gt; [
+    &#39;secret&#39; =&gt; &#39;your-mandrill-key&#39;,
+],</code></pre>
+<h4 id="ses-driver">SES Driver</h4>
+<p>To use the Amazon SES driver, install the Amazon AWS SDK for PHP. You may install this library by adding the following line to your <code>composer.json</code> file's <code>require</code> section:</p>
+<pre><code>&quot;aws/aws-sdk-php&quot;: &quot;~3.0&quot;</code></pre>
+<p>Next, set the <code>driver</code> option in your <code>config/mail.php</code> configuration file to <code>ses</code>. Then, verify that your <code>config/services.php</code> configuration file contains the following options:</p>
+<pre><code>&#39;ses&#39; =&gt; [
+    &#39;key&#39; =&gt; &#39;your-ses-key&#39;,
+    &#39;secret&#39; =&gt; &#39;your-ses-secret&#39;,
+    &#39;region&#39; =&gt; &#39;ses-region&#39;,  // e.g. us-east-1
+],</code></pre>
+<p><a name="sending-mail"></a> ## Sending Mail</p>
+<p>Laravel allows you to store your e-mail messages in <a href="/docs/%7B%7Bversion%7D%7D/views">views</a>. For example, to organize your e-mails, you could create an <code>emails</code> directory within your <code>resources/views</code> directory:</p>
+<p>To send a message, use the <code>send</code> method on the <code>Mail</code> <a href="/docs/%7B%7Bversion%7D%7D/facades">facade</a>. The <code>send</code> method accepts three arguments. First, the name of a <a href="/docs/%7B%7Bversion%7D%7D/views">view</a> that contains the e-mail message. Secondly, an array of data you wish to pass to the view. Lastly, a <code>Closure</code> callback which receives a message instance, allowing you to customize the recipients, subject, and other aspects of the mail message:</p>
+<pre><code>&lt;?php
+
+namespace App\Http\Controllers;
+
+use Mail;
+use App\User;
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+
+class UserController extends Controller
+{
+    /**
+     * Send an e-mail reminder to the user.
+     *
+     * @param  Request  $request
+     * @param  int  $id
+     * @return Response
+     */
+    public function sendEmailReminder(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        Mail::send(&#39;emails.reminder&#39;, [&#39;user&#39; =&gt; $user], function ($m) use ($user) {
+            $m-&gt;from(&#39;hello@app.com&#39;, &#39;Your Application&#39;);
+
+            $m-&gt;to($user-&gt;email, $user-&gt;name)-&gt;subject(&#39;Your Reminder!&#39;);
+        });
+    }
+}</code></pre>
+<p>Since we are passing an array containing the <code>user</code> key in the example above, we could display the user's name within our e-mail view using the following PHP code:</p>
+<pre><code>&lt;?php echo $user-&gt;name; ?&gt;</code></pre>
+<blockquote>
+<p><strong>Note:</strong> A <code>$message</code> variable is always passed to e-mail views, and allows the <a href="#attachments">inline embedding of attachments</a>. So, you should avoid passing a <code>message</code> variable in your view payload.</p>
+</blockquote>
+<h4 id="building-the-message">Building The Message</h4>
+<p>As previously discussed, the third argument given to the <code>send</code> method is a <code>Closure</code> allowing you to specify various options on the e-mail message itself. Using this Closure you may specify other attributes of the message, such as carbon copies, blind carbon copies, etc:</p>
+<pre><code>Mail::send(&#39;emails.welcome&#39;, $data, function ($message) {
+    $message-&gt;from(&#39;us@example.com&#39;, &#39;Laravel&#39;);
+
+    $message-&gt;to(&#39;foo@example.com&#39;)-&gt;cc(&#39;bar@example.com&#39;);
+});</code></pre>
+<p>Here is a list of the available methods on the <code>$message</code> message builder instance:</p>
+<pre><code>$message-&gt;from($address, $name = null);
+$message-&gt;sender($address, $name = null);
+$message-&gt;to($address, $name = null);
+$message-&gt;cc($address, $name = null);
+$message-&gt;bcc($address, $name = null);
+$message-&gt;replyTo($address, $name = null);
+$message-&gt;subject($subject);
+$message-&gt;priority($level);
+$message-&gt;attach($pathToFile, array $options = []);
+
+// Attach a file from a raw $data string...
+$message-&gt;attachData($data, $name, array $options = []);
+
+// Get the underlying SwiftMailer message instance...
+$message-&gt;getSwiftMessage();</code></pre>
+<blockquote>
+<p><strong>Note:</strong> The message instance passed to a <code>Mail::send</code> Closure extends the SwiftMailer message class, allowing you to call any method on that class to build your e-mail messages.</p>
+</blockquote>
+<h4 id="mailing-plain-text">Mailing Plain Text</h4>
+<p>By default, the view given to the <code>send</code> method is assumed to contain HTML. However, by passing an array as the first argument to the <code>send</code> method, you may specify a plain text view to send in addition to the HTML view:</p>
+<pre><code>Mail::send([&#39;html.view&#39;, &#39;text.view&#39;], $data, $callback);</code></pre>
+<p>Or, if you only need to send a plain text e-mail, you may specify this using the <code>text</code> key in the array:</p>
+<pre><code>Mail::send([&#39;text&#39; =&gt; &#39;view&#39;], $data, $callback);</code></pre>
+<h4 id="mailing-raw-strings">Mailing Raw Strings</h4>
+<p>You may use the <code>raw</code> method if you wish to e-mail a raw string directly:</p>
+<pre><code>Mail::raw(&#39;Text to e-mail&#39;, function ($message) {
+    //
+});</code></pre>
+<p><a name="attachments"></a> ### Attachments</p>
+<p>To add attachments to an e-mail, use the <code>attach</code> method on the <code>$message</code> object passed to your Closure. The <code>attach</code> method accepts the full path to the file as its first argument:</p>
+<pre><code>Mail::send(&#39;emails.welcome&#39;, $data, function ($message) {
+    //
+
+    $message-&gt;attach($pathToFile);
+});</code></pre>
+<p>When attaching files to a message, you may also specify the display name and / or MIME type by passing an <code>array</code> as the second argument to the <code>attach</code> method:</p>
+<pre><code>$message-&gt;attach($pathToFile, [&#39;as&#39; =&gt; $display, &#39;mime&#39; =&gt; $mime]);</code></pre>
+<p><a name="inline-attachments"></a> ### Inline Attachments</p>
+<h4 id="embedding-an-image-in-an-e-mail-view">Embedding An Image In An E-Mail View</h4>
+<p>Embedding inline images into your e-mails is typically cumbersome; however, Laravel provides a convenient way to attach images to your e-mails and retrieving the appropriate CID. To embed an inline image, use the <code>embed</code> method on the <code>$message</code> variable within your e-mail view. Remember, Laravel automatically makes the <code>$message</code> variable available to all of your e-mail views:</p>
+<pre><code>&lt;body&gt;
+    Here is an image:
+
+    &lt;img src=&quot;&lt;?php echo $message-&gt;embed($pathToFile); ?&gt;&quot;&gt;
+&lt;/body&gt;</code></pre>
+<h4 id="embedding-raw-data-in-an-e-mail-view">Embedding Raw Data In An E-Mail View</h4>
+<p>If you already have a raw data string you wish to embed into an e-mail message, you may use the <code>embedData</code> method on the <code>$message</code> variable:</p>
+<pre><code>&lt;body&gt;
+    Here is an image from raw data:
+
+    &lt;img src=&quot;&lt;?php echo $message-&gt;embedData($data, $name); ?&gt;&quot;&gt;
+&lt;/body&gt;</code></pre>
+<p><a name="queueing-mail"></a> ### Queueing Mail</p>
+<h4 id="queueing-a-mail-message">Queueing A Mail Message</h4>
+<p>Since sending e-mail messages can drastically lengthen the response time of your application, many developers choose to queue e-mail messages for background sending. Laravel makes this easy using its built-in <a href="/docs/%7B%7Bversion%7D%7D/queues">unified queue API</a>. To queue a mail message, use the <code>queue</code> method on the <code>Mail</code> facade:</p>
+<pre><code>Mail::queue(&#39;emails.welcome&#39;, $data, function ($message) {
+    //
+});</code></pre>
+<p>This method will automatically take care of pushing a job onto the queue to send the mail message in the background. Of course, you will need to <a href="/docs/%7B%7Bversion%7D%7D/queues">configure your queues</a> before using this feature.</p>
+<h4 id="delayed-message-queueing">Delayed Message Queueing</h4>
+<p>If you wish to delay the delivery of a queued e-mail message, you may use the <code>later</code> method. To get started, simply pass the number of seconds by which you wish to delay the sending of the message as the first argument to the method:</p>
+<pre><code>Mail::later(5, &#39;emails.welcome&#39;, $data, function ($message) {
+    //
+});</code></pre>
+<h4 id="pushing-to-specific-queues">Pushing To Specific Queues</h4>
+<p>If you wish to specify a specific queue on which to push the message, you may do so using the <code>queueOn</code> and <code>laterOn</code> methods:</p>
+<pre><code>Mail::queueOn(&#39;queue-name&#39;, &#39;emails.welcome&#39;, $data, function ($message) {
+    //
+});
+
+Mail::laterOn(&#39;queue-name&#39;, 5, &#39;emails.welcome&#39;, $data, function ($message) {
+    //
+});</code></pre>
+<p><a name="mail-and-local-development"></a> ## Mail &amp; Local Development</p>
+<p>When developing an application that sends e-mail, you probably don't want to actually send e-mails to live e-mail addresses. Laravel provides several ways to &quot;disable&quot; the actual sending of e-mail messages.</p>
+<h4 id="log-driver">Log Driver</h4>
+<p>One solution is to use the <code>log</code> mail driver during local development. This driver will write all e-mail messages to your log files for inspection. For more information on configuring your application per environment, check out the <a href="/docs/%7B%7Bversion%7D%7D/installation#environment-configuration">configuration documentation</a>.</p>
+<h4 id="universal-to">Universal To</h4>
+<p>Another solution provided by Laravel is to set a universal recipient of all e-mails sent by the framework. This way, all the emails generated by your application will be sent to a specific address, instead of the address actually specified when sending the message. This can be done via the <code>to</code> option in your <code>config/mail.php</code> configuration file:</p>
+<pre><code>&#39;to&#39; =&gt; [
+    &#39;address&#39; =&gt; &#39;dev@domain.com&#39;,
+    &#39;name&#39; =&gt; &#39;Dev Example&#39;
+],</code></pre>
+<h4 id="mailtrap">Mailtrap</h4>
+<p>Finally, you may use a service like <a href="https://mailtrap.io">Mailtrap</a> and the <code>smtp</code> driver to send your e-mail messages to a &quot;dummy&quot; mailbox where you may view them in a true e-mail client. This approach has the benefit of allowing you to actually inspect the final e-mails in Mailtrap's message viewer.</p>
+<p><a name="events"></a> ## Events</p>
+<p>Laravel fires an event just before sending mail messages. Remember, this event is fired when the mail is <em>sent</em>, not when it is queued. You may register an event listener in your <code>EventServiceProvider</code>:</p>
+<pre><code>/**
+ * The event listener mappings for the application.
+ *
+ * @var array
+ */
+protected $listen = [
+    &#39;Illuminate\Mail\Events\MessageSending&#39; =&gt; [
+        &#39;App\Listeners\LogSentMessage&#39;,
+    ],
+];</code></pre>
+</body>
+</html>

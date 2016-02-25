@@ -1,0 +1,232 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+</head>
+<body>
+<h1 id="task-scheduling">Task Scheduling</h1>
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#defining-schedules">Defining Schedules</a>
+<ul>
+<li><a href="#schedule-frequency-options">Schedule Frequency Options</a></li>
+<li><a href="#preventing-task-overlaps">Preventing Task Overlaps</a></li>
+</ul></li>
+<li><a href="#task-output">Task Output</a></li>
+<li><a href="#task-hooks">Task Hooks</a></li>
+</ul>
+<p><a name="introduction"></a> ## Introduction</p>
+<p>In the past, developers have generated a Cron entry for each task they need to schedule. However, this is a headache. Your task schedule is no longer in source control, and you must SSH into your server to add the Cron entries. The Laravel command scheduler allows you to fluently and expressively define your command schedule within Laravel itself, and only a single Cron entry is needed on your server.</p>
+<p>Your task schedule is defined in the <code>app/Console/Kernel.php</code> file's <code>schedule</code> method. To help you get started, a simple example is included with the method. You are free to add as many scheduled tasks as you wish to the <code>Schedule</code> object.</p>
+<h3 id="starting-the-scheduler">Starting The Scheduler</h3>
+<p>Here is the only Cron entry you need to add to your server:</p>
+<pre><code>* * * * * php /path/to/artisan schedule:run &gt;&gt; /dev/null 2&gt;&amp;1</code></pre>
+<p>This Cron will call the Laravel command scheduler every minute. Then, Laravel evaluates your scheduled tasks and runs the tasks that are due.</p>
+<p><a name="defining-schedules"></a> ## Defining Schedules</p>
+<p>You may define all of your scheduled tasks in the <code>schedule</code> method of the <code>App\Console\Kernel</code> class. To get started, let's look at an example of scheduling a task. In this example, we will schedule a <code>Closure</code> to be called every day at midnight. Within the <code>Closure</code> we will execute a database query to clear a table:</p>
+<pre><code>&lt;?php
+
+namespace App\Console;
+
+use DB;
+use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+
+class Kernel extends ConsoleKernel
+{
+    /**
+     * The Artisan commands provided by your application.
+     *
+     * @var array
+     */
+    protected $commands = [
+        \App\Console\Commands\Inspire::class,
+    ];
+
+    /**
+     * Define the application&#39;s command schedule.
+     *
+     * @param  \Illuminate\Console\Scheduling\Schedule  $schedule
+     * @return void
+     */
+    protected function schedule(Schedule $schedule)
+    {
+        $schedule-&gt;call(function () {
+            DB::table(&#39;recent_users&#39;)-&gt;delete();
+        })-&gt;daily();
+    }
+}</code></pre>
+<p>In addition to scheduling <code>Closure</code> calls, you may also schedule <a href="/docs/%7B%7Bversion%7D%7D/artisan">Artisan commands</a> and operating system commands. For example, you may use the <code>command</code> method to schedule an Artisan command:</p>
+<pre><code>$schedule-&gt;command(&#39;emails:send --force&#39;)-&gt;daily();</code></pre>
+<p>The <code>exec</code> command may be used to issue a command to the operating system:</p>
+<pre><code>$schedule-&gt;exec(&#39;node /home/forge/script.js&#39;)-&gt;daily();</code></pre>
+<p><a name="schedule-frequency-options"></a> ### Schedule Frequency Options</p>
+<p>Of course, there are a variety of schedules you may assign to your task:</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Method</th>
+<th align="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left"><code>-&gt;cron('* * * * * *');</code></td>
+<td align="left">Run the task on a custom Cron schedule</td>
+</tr>
+<tr class="even">
+<td align="left"><code>-&gt;everyMinute();</code></td>
+<td align="left">Run the task every minute</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>-&gt;everyFiveMinutes();</code></td>
+<td align="left">Run the task every five minutes</td>
+</tr>
+<tr class="even">
+<td align="left"><code>-&gt;everyTenMinutes();</code></td>
+<td align="left">Run the task every ten minutes</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>-&gt;everyThirtyMinutes();</code></td>
+<td align="left">Run the task every thirty minutes</td>
+</tr>
+<tr class="even">
+<td align="left"><code>-&gt;hourly();</code></td>
+<td align="left">Run the task every hour</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>-&gt;daily();</code></td>
+<td align="left">Run the task every day at midnight</td>
+</tr>
+<tr class="even">
+<td align="left"><code>-&gt;dailyAt('13:00');</code></td>
+<td align="left">Run the task every day at 13:00</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>-&gt;twiceDaily(1, 13);</code></td>
+<td align="left">Run the task daily at 1:00 &amp; 13:00</td>
+</tr>
+<tr class="even">
+<td align="left"><code>-&gt;weekly();</code></td>
+<td align="left">Run the task every week</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>-&gt;monthly();</code></td>
+<td align="left">Run the task every month</td>
+</tr>
+<tr class="even">
+<td align="left"><code>-&gt;quarterly();</code></td>
+<td align="left">Run the task every quarter</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>-&gt;yearly();</code></td>
+<td align="left">Run the task every year</td>
+</tr>
+</tbody>
+</table>
+<p>These methods may be combined with additional constraints to create even more finely tuned schedules that only run on certain days of the week. For example, to schedule a command to run weekly on Monday:</p>
+<pre><code>$schedule-&gt;call(function () {
+    // Runs once a week on Monday at 13:00...
+})-&gt;weekly()-&gt;mondays()-&gt;at(&#39;13:00&#39;);</code></pre>
+<p>Below is a list of the additional schedule constraints:</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Method</th>
+<th align="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left"><code>-&gt;weekdays();</code></td>
+<td align="left">Limit the task to weekdays</td>
+</tr>
+<tr class="even">
+<td align="left"><code>-&gt;sundays();</code></td>
+<td align="left">Limit the task to Sunday</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>-&gt;mondays();</code></td>
+<td align="left">Limit the task to Monday</td>
+</tr>
+<tr class="even">
+<td align="left"><code>-&gt;tuesdays();</code></td>
+<td align="left">Limit the task to Tuesday</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>-&gt;wednesdays();</code></td>
+<td align="left">Limit the task to Wednesday</td>
+</tr>
+<tr class="even">
+<td align="left"><code>-&gt;thursdays();</code></td>
+<td align="left">Limit the task to Thursday</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>-&gt;fridays();</code></td>
+<td align="left">Limit the task to Friday</td>
+</tr>
+<tr class="even">
+<td align="left"><code>-&gt;saturdays();</code></td>
+<td align="left">Limit the task to Saturday</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>-&gt;when(Closure);</code></td>
+<td align="left">Limit the task based on a truth test</td>
+</tr>
+</tbody>
+</table>
+<h4 id="truth-test-constraints">Truth Test Constraints</h4>
+<p>The <code>when</code> method may be used to limit the execution of a task based on the result of a given truth test. In other words, if the given <code>Closure</code> returns <code>true</code>, the task will execute as long as no other constraining conditions prevent the task from running:</p>
+<pre><code>$schedule-&gt;command(&#39;emails:send&#39;)-&gt;daily()-&gt;when(function () {
+    return true;
+});</code></pre>
+<p>The <code>reject</code> method may be seen as the inverse of <code>when</code>. If the <code>reject</code> method returns <code>true</code>, the scheduled task will not be executed:</p>
+<pre><code>$schedule-&gt;command(&#39;emails:send&#39;)-&gt;daily()-&gt;reject(function () {
+    return true;
+});</code></pre>
+<p>When using chained <code>when</code> methods, the scheduled command will only execute if all <code>when</code> conditions return <code>true</code>.</p>
+<p><a name="preventing-task-overlaps"></a> ### Preventing Task Overlaps</p>
+<p>By default, scheduled tasks will be run even if the previous instance of the task is still running. To prevent this, you may use the <code>withoutOverlapping</code> method:</p>
+<pre><code>$schedule-&gt;command(&#39;emails:send&#39;)-&gt;withoutOverlapping();</code></pre>
+<p>In this example, the <code>emails:send</code> <a href="/docs/%7B%7Bversion%7D%7D/artisan">Artisan command</a> will be run every minute if it is not already running. The <code>withoutOverlapping</code> method is especially useful if you have tasks that vary drastically in their execution time, preventing you from predicting exactly how long a given task will take.</p>
+<p><a name="task-output"></a> ## Task Output</p>
+<p>The Laravel scheduler provides several convenient methods for working with the output generated by scheduled tasks. First, using the <code>sendOutputTo</code> method, you may send the output to a file for later inspection:</p>
+<pre><code>$schedule-&gt;command(&#39;emails:send&#39;)
+         -&gt;daily()
+         -&gt;sendOutputTo($filePath);</code></pre>
+<p>If you would like to append the output to a given file, you may use the <code>appendOutputTo</code> method:</p>
+<pre><code>$schedule-&gt;command(&#39;emails:send&#39;)
+         -&gt;daily()
+         -&gt;appendOutputTo($filePath);</code></pre>
+<p>Using the <code>emailOutputTo</code> method, you may e-mail the output to an e-mail address of your choice. Note that the output must first be sent to a file using the <code>sendOutputTo</code> method. Also, before e-mailing the output of a task, you should configure Laravel's <a href="/docs/%7B%7Bversion%7D%7D/mail">e-mail services</a>:</p>
+<pre><code>$schedule-&gt;command(&#39;foo&#39;)
+         -&gt;daily()
+         -&gt;sendOutputTo($filePath)
+         -&gt;emailOutputTo(&#39;foo@example.com&#39;);</code></pre>
+<blockquote>
+<p><strong>Note:</strong> The <code>emailOutputTo</code> and <code>sendOutputTo</code> methods are exclusive to the <code>command</code> method and are not supported for <code>call</code>.</p>
+</blockquote>
+<p><a name="task-hooks"></a> ## Task Hooks</p>
+<p>Using the <code>before</code> and <code>after</code> methods, you may specify code to be executed before and after the scheduled task is complete:</p>
+<pre><code>$schedule-&gt;command(&#39;emails:send&#39;)
+         -&gt;daily()
+         -&gt;before(function () {
+             // Task is about to start...
+         })
+         -&gt;after(function () {
+             // Task is complete...
+         });</code></pre>
+<h4 id="pinging-urls">Pinging URLs</h4>
+<p>Using the <code>pingBefore</code> and <code>thenPing</code> methods, the scheduler can automatically ping a given URL before or after a task is complete. This method is useful for notifying an external service, such as <a href="https://envoyer.io">Laravel Envoyer</a>, that your scheduled task is commencing or complete:</p>
+<pre><code>$schedule-&gt;command(&#39;emails:send&#39;)
+         -&gt;daily()
+         -&gt;pingBefore($url)
+         -&gt;thenPing($url);</code></pre>
+<p>Using either the <code>pingBefore($url)</code> or <code>thenPing($url)</code> feature requires the Guzzle HTTP library. You can add Guzzle to your project by adding the following line to your <code>composer.json</code> file:</p>
+<pre><code>&quot;guzzlehttp/guzzle&quot;: &quot;~5.3|~6.0&quot;</code></pre>
+</body>
+</html>
